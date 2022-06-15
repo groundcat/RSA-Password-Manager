@@ -1,0 +1,2 @@
+rsa~=4.8
+pyperclip~=1.8.2
