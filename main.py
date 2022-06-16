@@ -1,11 +1,11 @@
 from tkinter import *
 from tkinter import messagebox
-import csv
 import random
 import rsa
 import os
 import pyperclip
 import base64
+import json
 
 GREY = "#313543"
 WHITE = "#ffffff"
@@ -110,19 +110,26 @@ def save():
             # Convert the password from bytes to string
             encrypted_password_string = base64.b64encode(encrypted_password).decode("utf-8")
 
-            # Save the password to a CSV file
-            with open("passwords.csv", "a") as csv_file:
+            # Create a dictionary of new data
+            new_data = {
+                website: {
+                    "username": username,
+                    "password": encrypted_password_string
+                }
+            }
 
-                # Add headers if the file is empty
-                if csv_file.tell() == 0:
-                    csv_file.write("Website,Username,Password\n")
+            try:
+                with open("passwords.json", "r") as json_file:
+                    existing_data = json.load(json_file)  # Load the existing data
+                    existing_data.update(new_data)  # Update the existing data with the new data
+            except FileNotFoundError:
+                existing_data = new_data
 
-                # Write the data to the file
-                writer = csv.writer(csv_file)
-                writer.writerow([website, username, encrypted_password_string])
+            with open("passwords.json", "w") as json_file:
+                json.dump(existing_data, json_file, indent=4)  # Save the updated data to the JSON file
 
-                print(f"Saved {website} to the password manager.")
-                print(f"Website: {website}\nUsername: {username}\nEncrypted Password: {encrypted_password}")
+            print(f"Saved {website} to the password manager.")
+            print(f"Website: {website}\nUsername: {username}\nEncrypted Password: {encrypted_password}")
 
             # Empty the entry boxes
             entry_website.delete(0, END)
@@ -134,18 +141,12 @@ def save():
 # ---------------------------- LOAD PASSWORD ------------------------------- #
 
 
-# Load passwords from the CSV file into a dictionary
+# Load passwords from the JSON file into a dictionary
 def load_passwords():
     # Only load if the file exists
-    if os.path.exists("passwords.csv"):
-        with open("passwords.csv", "r") as csv_file:
-            reader = csv.reader(csv_file)
-            passwords = {}
-            for row in reader:
-                website = row[0]
-                username = row[1]
-                password = row[2]
-                passwords[website] = [username, password]
+    if os.path.exists("passwords.json"):
+        with open("passwords.json", "r") as json_file:
+            passwords = json.load(json_file)
             return passwords
     else:
         return {}
@@ -158,8 +159,8 @@ def load_website_password():
     # Check if the website exists in the passwords_dict
     if website in passwords_dict:
         # Get the username and password from the passwords_dict
-        username = passwords_dict[website][0]
-        password = passwords_dict[website][1]
+        username = passwords_dict[website]['username']
+        password = passwords_dict[website]['password']
 
         print(f"Website: {website}\nUsername: {username}\nEncrypted Password: {password}")
 
@@ -180,6 +181,9 @@ def load_website_password():
 
         # Copy the password to the clipboard
         pyperclip.copy(decrypted_password)
+
+    else:
+        messagebox.showerror("Error", "This website does not exist in the password manager.")
 
 
 # ---------------------------- UI SETUP ------------------------------- #
